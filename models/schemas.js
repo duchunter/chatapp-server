@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
+const { DB_NAME, DB_CONNECT_STRING } = require('chatapp/config');
+
 // Connect to mongo
-mongoose.connect("mongodb://localhost:27017/chatDB", { useNewUrlParser: true });
+mongoose.connect(DB_CONNECT_STRING, { dbName: DB_NAME });
 
 // Create schema
 const userSchema = new mongoose.Schema({
@@ -9,19 +11,19 @@ const userSchema = new mongoose.Schema({
   password: String,
   name: String,
   avatar: String,
-  friends: [String],
-  groups: [String]
+  friends: [ String ],
+  groups: [ String ]
 });
 
 const groupSchema = new mongoose.Schema({
   _id: String,
   name: String,
-  members: [String]
+  members: [ String ]
 });
 
 const notificationSchema = new mongoose.Schema({
   username: String,
-  created:{
+  created: {
     type: Date,
     default: Date.now
   },
@@ -33,7 +35,7 @@ const notificationSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   group_id: String,
   sender: String,
-  created:{
+  created: {
     type: Date,
     default: Date.now
   },
@@ -41,14 +43,14 @@ const messageSchema = new mongoose.Schema({
 });
 
 // Create models based on schemas
-const User = mongoose.model("User", userSchema);
-const Group = mongoose.model("Group", groupSchema);
-const Notification = mongoose.model("Notification", notificationSchema);
-const Message = mongoose.model("Message", messageSchema);
+const User = mongoose.model('User', userSchema);
+const Group = mongoose.model('Group', groupSchema);
+const Notification = mongoose.model('Notification', notificationSchema);
+const Message = mongoose.model('Message', messageSchema);
 
 module.exports = {
   User,
   Group,
   Notification,
   Message
-}
+};

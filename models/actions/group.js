@@ -1,4 +1,4 @@
-/********** Groups CRUD **********/
+/** ******** Groups CRUD **********/
 let { Group } = require('../schemas.js');
 
 // Create group
@@ -14,19 +14,19 @@ async function createGroup(payload) {
 }
 
 // Get group members
-async function getMembers({ groupId }) {
-  let members = [];
+async function getGroupInfo({ groupId }) {
+  let groupInfo = null;
   try {
-    members = await Group.findOne({ _id: groupId });
+    groupInfo = await Group.findOne({ _id: groupId });
   } catch (e) {
     console.log(e);
   } finally {
-    return members;
+    return groupInfo;
   }
 }
 
 // Update group members
-async function addMember({ groupId, username }){
+async function addMember({ groupId, username }) {
   try {
     await Group.updateOne({ _id: groupId }, { $push: { members: username } });
     return true;
@@ -37,7 +37,7 @@ async function addMember({ groupId, username }){
 }
 
 // Update group name
-async function updateGroupName({ groupId, name }){
+async function updateGroupName({ groupId, name }) {
   try {
     await Group.updateOne({ _id: groupId }, { name });
     return true;
@@ -48,9 +48,9 @@ async function updateGroupName({ groupId, name }){
 }
 
 // Remove group member
-async function removeMember({ groupId, username }){
+async function removeMember({ groupId, username }) {
   try {
-    await Group.updateOne({_id: groupId}, { $pull: { members: username } });
+    await Group.updateOne({ _id: groupId }, { $pull: { members: username } });
     return true;
   } catch (e) {
     console.log(e);
@@ -60,8 +60,8 @@ async function removeMember({ groupId, username }){
 
 module.exports = {
   createGroup,
-  getMembers,
+  getGroupInfo,
   addMember,
   updateGroupName,
   removeMember
-}
+};

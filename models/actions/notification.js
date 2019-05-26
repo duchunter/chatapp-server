@@ -1,4 +1,4 @@
-/********** Notification CRUD **********/
+/** ******** Notification CRUD **********/
 let { Notification } = require('../schemas.js');
 
 async function getNotifications({ username }) {
@@ -6,7 +6,7 @@ async function getNotifications({ username }) {
     let notifications = await Notification.find(
       { username },
       null,
-      { sort: { created : -1} }
+      { sort: { created: -1 } }
     );
     return notifications;
   } catch (e) {
@@ -16,7 +16,7 @@ async function getNotifications({ username }) {
 }
 
 async function createNotification(payload) {
-  const newNotification = new Notification({...payload});
+  const newNotification = new Notification({ ...payload });
   try {
     await newNotification.save();
     return newNotification;
@@ -26,7 +26,17 @@ async function createNotification(payload) {
   }
 }
 
+async function deleteNotification({ id }) {
+  try {
+    await Notification.deleteOne({ _id: id });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 module.exports = {
   getNotifications,
-  createNotification
-}
+  createNotification,
+  deleteNotification
+};

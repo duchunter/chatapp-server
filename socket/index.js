@@ -1,79 +1,98 @@
-let { getUserInfo, updateUserInfo } = require('../models');
+let io = require('socket.io')();
 
-var io = require("socket.io")();
+const {
+  getDataWhenConnected,
+  getUserInfo,
+  updateUserInfo,
+  createFriendRequestNoti,
+  deleteNotification,
+  updateFriend,
+  createMessage
+} = require('chatapp/controllers');
 
-io.on("connection", (socket) => {
-  let state = {}
+io.on('connection', (socket) => {
+  let state = {};
 
   // Connect to app
-  socket.on("user-connected", ({ username }, callback) => {
+  socket.on('user-connected', async ({ username }, callback) => {
     // Join user private room
     socket.join(username);
 
-    // Get user dat from db
-    let userData = getUserInfo();
-    let { info, groups } = userData;
+    // Get user data and noti
+    let userInfo = await getDataWhenConnected({ username });
+    if (callback) {
+      callback(userInfo);
+    }
 
     // Store state to save searching time
-    state.info = info;
-    state.groups = groups;
-
-    // Send back info to user
-    callback && callback(userData);
+    state = { ...userInfo };
 
     // Join all group chat
-    groups.forEach(group => {
+    userInfo.groups.forEach(group => {
       socket.join(group.id);
     });
 
     // Emit all friends that user is online
-    info.friends.forEach(user => {
-      io.to(user).emit('friend-online', username);
+    userInfo.friends.forEach(user => {
+      io.to(user.username).emit('friend-online', username);
     });
   });
 
   // Get user info
   socket.on('get-user-info', ({ username }, callback) => {
     let info = getUserInfo(username);
-    callback && callback(info);
+    if (callback) {
+      callback(info);
+    }
   });
 
   // Update user info
-  socket.on('update-user-info', ({ info }, callback) => {
-    let isSuccess = updateUserInfo(state.username, info);
-    callback && callback(isSuccess);
+  socket.on('update-user-info', async ({ info }, callback) => {
+    let isSuccess = await updateUserInfo(state.username, info);
+    if (isSuccess) {
+      if (callback) {
+        callback(isSuccess);
+      }
 
-    // Notify all friend
-    state.info.friends.forEach(user => {
-      io.to(user).emit('friend-update-profile', state.info);
-    });
+      // Notify all friend
+      state.info.friends.forEach(user => {
+        io.to(user).emit('friend-update-profile', state.info);
+      });
+    }
   });
 
   // Delete notification
-  socket.on('delete-notification', ({ notifications }, callback) => {
-    notifications.forEach((noti) => {
-      // TODO: delete noti by id
-    });
-
-    callback && callback();
+  socket.on('delete-notification', async ({ ids }, callback) => {
+    const notiPromises = ids.map(id => deleteNotification({ id }));
+    const results = Promise.all(notiPromises);
+    const isSuccess = results.every(status => status);
+    if (callback) {
+      callback(isSuccess);
+    }
   });
 
   // Add new friend
-  socket.on('add-friend', ({ username }, callback) => {
+  socket.on('add-friend', async ({ receiverUsername }, callback) => {
     // TODO: create noti
-    let noti = createNotification();
+    let { username, name } = state;
+    const noti = await createFriendRequestNoti({
+      sender: { username, name },
+      receiver: { username: receiverUsername }
+    });
 
     // Emit noti
-    io.to(username).emit('notification', noti);
+    io.to(receiverUsername).emit('notification', noti);
 
-    callback && callback();
+    if (callback) {
+      callback(!!noti);
+    }
   });
 
   // Handle friend request
   socket.on('handle-friend-request', ({ sender, accepted }, callback) => {
     if (accepted) {
       // Update user info
-      let userFriendList = udpateFriendList(state.username);
+      let userFriendList = updateFriend(state.username);
       io.to(state.username).emit('update-friend-list', userFriendList);
 
       // Update sender info and notify him/her
@@ -161,19 +180,24 @@ io.on("connection", (socket) => {
 
   // Chat text
   socket.on('chat-text', ({ message }, callback) => {
-    createMessage();
+    const msg = createMessage(message);
+    if (callback) {
+      callback(!!msg);
+    }
+
+    io.to(message.group_id).broadcast.emit('chat-message', msg);
   });
 });
 
-// Get all current room
-function getAllRooms() {
-  return Object.keys(io.sockets.adapter.rooms);
-}
+// Get all current rooms
+// function getAllRooms() {
+//   return Object.keys(io.sockets.adapter.rooms);
+// }
 
 // Kick user from room
 function kickUserFromRoom(room, username) {
-  let socketId = Object.keys(io.sockets.adapter.rooms[username].sockets)[0];
-  io.sockets.sockets[socketId].leave(room);
+  let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
+  io.sockets.sockets[ socketId ].leave(room);
 }
 
 module.exports = io;

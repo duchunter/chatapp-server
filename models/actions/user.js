@@ -1,4 +1,4 @@
-/********** User CRUD **********/
+/** ******** User CRUD **********/
 let { User } = require('../schemas.js');
 
 // Create user
@@ -57,6 +57,17 @@ async function updatePassword({ username, password }) {
   }
 }
 
+// Update user info
+async function updateUserInfo({ username, avatar, name }) {
+  try {
+    await User.updateOne({ username }, { avatar, name });
+    return true;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+}
+
 // Update avatar
 async function updateAvatar({ username, avatar }) {
   try {
@@ -93,10 +104,23 @@ async function removeGroup({ username, groupId }) {
 // Remove friend
 async function removeFriend({ username, friendname }) {
   try {
-    await User.updateOne({ username}, { $pull: { friends: friendname } });
+    await User.updateOne({ username }, { $pull: { friends: friendname } });
     return true;
   } catch (e) {
     console.log(e);
-    return false
+    return false;
   }
 }
+
+module.exports = {
+  createUser,
+  getUserInfo,
+  updateGroup,
+  updateFriend,
+  updatePassword,
+  updateUserInfo,
+  updateAvatar,
+  updateName,
+  removeGroup,
+  removeFriend
+};
