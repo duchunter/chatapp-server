@@ -1,4 +1,4 @@
-const { getGroupMessages, createMessage } = require('chatapp/models');
+const { getGroupMessages, createMessage } = require('../models');
 
 module.exports = {
   createMessage,

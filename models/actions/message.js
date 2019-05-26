@@ -1,4 +1,4 @@
-/********** Message CRUD **********/
+/** ******** Message CRUD **********/
 let { Message } = require('../schemas.js');
 
 // Get message
@@ -10,7 +10,7 @@ async function getGroupMessages({ groupId, limit }) {
       null,
       {
         limit,
-        sort: { created : -1}
+        sort: { created: -1 }
       }
     );
   } catch (e) {
@@ -28,6 +28,11 @@ async function createMessage(payload) {
     return newMessage;
   } catch (e) {
     console.log(e);
-    return null
+    return null;
   }
 }
+
+module.exports = {
+  getGroupMessages,
+  createMessage
+};

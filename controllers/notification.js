@@ -2,7 +2,7 @@ const {
   createNotification,
   getNotifications,
   deleteNotification
-} = require('chatapp/models');
+} = require('../models');
 
 // Friend request notification
 async function createFriendRequestNoti({ sender, receiver }) {

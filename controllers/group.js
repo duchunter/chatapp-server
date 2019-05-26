@@ -4,7 +4,7 @@ const {
   addMember,
   updateGroupName,
   removeMember
-} = require('chatapp/models');
+} = require('../models');
 
 module.exports = {
   createGroup,

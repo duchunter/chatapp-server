@@ -8,7 +8,7 @@ const {
   updateName,
   removeGroup,
   removeFriend
-} = require('chatapp/models');
+} = require('../models');
 
 module.exports = {
   getUserInfo,

@@ -7,8 +7,30 @@ const {
   createFriendRequestNoti,
   deleteNotification,
   updateFriend,
-  createMessage
-} = require('chatapp/controllers');
+  updateGroupName,
+  createMessage,
+  removeMember,
+  removeGroup,
+  getGroupInfo,
+  createKickMemberNoti,
+  addMember,
+  updateGroup,
+  createGroup,
+  removeFriend,
+  createFriendAcceptNoti,
+  createFriendDenyNoti
+} = require('../controllers');
+
+// Get all current rooms
+// function getAllRooms() {
+//   return Object.keys(io.sockets.adapter.rooms);
+// }
+
+// Kick user from room
+function kickUserFromRoom(room, username) {
+  let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
+  io.sockets.sockets[ socketId ].leave(room);
+}
 
 io.on('connection', (socket) => {
   let state = {};
@@ -41,6 +63,7 @@ io.on('connection', (socket) => {
   // Get user info
   socket.on('get-user-info', ({ username }, callback) => {
     let info = getUserInfo(username);
+    delete info.password;
     if (callback) {
       callback(info);
     }
@@ -50,14 +73,14 @@ io.on('connection', (socket) => {
   socket.on('update-user-info', async ({ info }, callback) => {
     let isSuccess = await updateUserInfo(state.username, info);
     if (isSuccess) {
-      if (callback) {
-        callback(isSuccess);
-      }
-
       // Notify all friend
       state.info.friends.forEach(user => {
         io.to(user).emit('friend-update-profile', state.info);
       });
+    }
+
+    if (callback) {
+      callback(isSuccess);
     }
   });
 
@@ -89,93 +112,142 @@ io.on('connection', (socket) => {
   });
 
   // Handle friend request
-  socket.on('handle-friend-request', ({ sender, accepted }, callback) => {
+  socket.on('handle-friend-request', async ({ sender, accepted }, callback) => {
+    const { username, name, avatar } = state;
     if (accepted) {
+      const results = await Promise.all([
+        updateFriend({ username, friendname: sender }),
+        updateFriend({ username: sender, friendname: username })
+      ]);
+
+      const isSuccess = results.all(status => status);
+      if (isSuccess) {
+        const noti = await createFriendAcceptNoti({
+          sender,
+          receiver: { username, name, avatar }
+        });
+        io.to(sender).emit('notification', noti);
+      }
+
       // Update user info
-      let userFriendList = updateFriend(state.username);
+      let userFriendList = await updateFriend(state.username);
       io.to(state.username).emit('update-friend-list', userFriendList);
 
-      // Update sender info and notify him/her
-      let senderFriendList = updateFriendList(sender);
-      let noti = createNotification();
-      io.to(sender).emit('update-friend-list', userFriendList);
-      io.to(sender).emit('notification', noti);
+      if (callback) {
+        callback(isSuccess);
+      }
     } else {
       // Notify sender that he/she has been rejected
-      let noti = createNotification();
+      const noti = await createFriendDenyNoti({
+        sender,
+        receiver: { username, name, avatar }
+      });
       io.to(sender).emit('notification', noti);
+      if (callback) {
+        callback();
+      }
     }
-
-    callback && callback();
   });
 
   // Unfriend
-  socket.on('unfriend', ({ username }, callback) => {
-    // Update user info
-    let userFriendList = udpateFriendList(state.username);
-    io.to(state.username).emit('update-friend-list', userFriendList);
+  socket.on('unfriend', async ({ username }, callback) => {
+    const results = await Promise.all([
+      removeFriend({ username: state.username, friendname: username }),
+      removeFriend({ username, friendname: state.username })
+    ]);
 
-    // Update sender info and notify him/her
-    let senderFriendList = updateFriendList(sender);
-    let noti = createNotification();
-    io.to(sender).emit('update-friend-list', userFriendList);
-    io.to(sender).emit('notification', noti);
+    const isSuccess = results.all(status => status);
 
-    callback && callback();
+    if (isSuccess) {
+      const { friends } = await getUserInfo({ username });
+      io.to(username).emit('update-friend-list', friends);
+    }
+
+    if (callback) {
+      callback(isSuccess);
+    }
   });
 
   // Create group chat
-  socket.on('create-group-chat', ({ members, name }, callback) => {
-    let group = createGroupChat();
+  socket.on('create-group-chat', async ({ members, name }, callback) => {
+    const group = await createGroup({ members, name });
     members.forEach(user => {
       io.to(user).emit('new-group-chat', group);
     });
 
-    callback && callback();
+    if (callback) {
+      callback();
+    }
   });
 
   // Add member to group chat
-  socket.on('add-member', ({ groupId, username }, callback) => {
-    let group = updateGroupChat();
-    // TODO: add top message for new member
-    // TODO: add members info
+  socket.on('add-member', async ({ groupId, username }, callback) => {
+    const results = await Promise.all([
+      addMember({ groupId, username }),
+      updateGroup({ groupId, username })
+    ]);
 
-    // Update group chat info of all current member in the room
-    io.to(groupId).emit('update-group-chat', group);
+    const isSuccess = results.all(status => status);
 
-    // Notify new member
-    io.to(username).emit('added-to-group', group);
+    if (isSuccess) {
+      // Update group chat info of all current member in the room
+      const groupInfo = getGroupInfo({ groupId });
+      io.to(groupId).emit('update-group-chat', groupInfo);
 
-    callback && callback();
+      // Notify new member
+      io.to(username).emit('added-to-group', groupInfo);
+    }
+
+    if (callback) {
+      callback(isSuccess);
+    }
   });
 
   // Leave/Kick member from group chat
-  socket.on('remove-member', ({ groupId, username }, callback) => {
-    let group = updateGroupChat();
+  socket.on('remove-member', async ({ groupId, username }, callback) => {
+    const results = await Promise.all([
+      removeMember({ groupId, username }),
+      removeGroup({ groupId, username })
+    ]);
 
-    // Kick user from the room
-    kickUserFromRoom(groupId, username);
+    const isSuccess = results.all(status => status);
 
-    // Update group chat info of all current member in the room
-    io.to(groupId).emit('update-group-chat', group);
+    if (isSuccess) {
+      // Kick user from room
+      kickUserFromRoom(groupId, username);
 
-    // If the action is kick, notify that kicked member
-    if (state.username != username) {
-      let noti = createNotification();
-      io.to(username).emit('notification', noti);
+      // Update group chat info of all current member in the room
+      const groupInfo = getGroupInfo({ groupId });
+      io.to(groupId).emit('update-group-chat', groupInfo);
+
+      // If the action is kick, notify that kicked member
+      if (state.username !== username) {
+        let noti = await createKickMemberNoti({
+          group: groupId,
+          receiver: username
+        });
+        io.to(username).emit('notification', noti);
+      }
     }
 
-    callback && callback();
+    if (callback) {
+      callback(isSuccess);
+    }
   });
 
   // Update group chat info
-  socket.on('update-group-chat-info', ({ group }, callback) => {
-    let info = updateGroupChat();
+  socket.on('update-group-chat-info', async ({ group }, callback) => {
+    const { name, id } = group;
+    const isSuccess = await updateGroupName({ name, groupId: id });
 
-    // Update group chat info of all current member in the room
-    io.to(groupId).emit('update-group-chat', info);
+    if (isSuccess) {
+      // Update group chat info of all current member in the room
+      io.to(group.id).emit('update-group-chat', group);
+    }
 
-    callback && callback();
+    if (callback) {
+      callback(isSuccess);
+    }
   });
 
   // Chat text
@@ -188,16 +260,5 @@ io.on('connection', (socket) => {
     io.to(message.group_id).broadcast.emit('chat-message', msg);
   });
 });
-
-// Get all current rooms
-// function getAllRooms() {
-//   return Object.keys(io.sockets.adapter.rooms);
-// }
-
-// Kick user from room
-function kickUserFromRoom(room, username) {
-  let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
-  io.sockets.sockets[ socketId ].leave(room);
-}
 
 module.exports = io;

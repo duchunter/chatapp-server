@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const { DB_NAME, DB_CONNECT_STRING } = require('chatapp/config');
+const { DB_NAME, DB_CONNECT_STRING } = require('../config');
 
 // Connect to mongo
 mongoose.connect(DB_CONNECT_STRING, { dbName: DB_NAME });
