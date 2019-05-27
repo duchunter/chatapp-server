@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
 
     // Join all group chat
     userInfo.groups.forEach(group => {
-      socket.join(group.id);
+      socket.join(group._id);
     });
 
     // Emit all friends that user is online
@@ -251,13 +251,13 @@ io.on('connection', (socket) => {
   });
 
   // Chat text
-  socket.on('chat-text', ({ message }, callback) => {
-    const msg = createMessage(message);
+  socket.on('chat-text', async ({ message }, callback) => {
+    const msg = await createMessage(message);
     if (callback) {
       callback(!!msg);
     }
 
-    io.to(message.group_id).broadcast.emit('chat-message', msg);
+    io.to(message.group_id).emit('chat-message', msg);
   });
 });
 
