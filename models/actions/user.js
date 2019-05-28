@@ -58,9 +58,20 @@ async function updatePassword({ username, password }) {
 }
 
 // Update user info
-async function updateUserInfo({ username, avatar, name }) {
+async function updateUserInfo(data) {
   try {
-    await User.updateOne({ username }, { avatar, name });
+    const { username, avatar, name, password } = data;
+    let changes = {};
+    if (avatar) {
+      changes.avatar = avatar;
+    }
+    if (name) {
+      changes.name = name;
+    }
+    if (password) {
+      changes.password = password;
+    }
+    await User.updateOne({ username }, changes);
     return true;
   } catch (e) {
     console.log(e);

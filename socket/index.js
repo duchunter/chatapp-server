@@ -22,9 +22,9 @@ const {
 } = require('../controllers');
 
 // Get all current rooms
-// function getAllRooms() {
-//   return Object.keys(io.sockets.adapter.rooms);
-// }
+function getAllRooms() {
+  return Object.keys(io.sockets.adapter.rooms);
+}
 
 // Kick user from room
 function kickUserFromRoom(room, username) {
@@ -32,7 +32,7 @@ function kickUserFromRoom(room, username) {
   io.sockets.sockets[ socketId ].leave(room);
 }
 
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   let state = {};
 
   // Connect to app
@@ -42,6 +42,16 @@ io.on('connection', (socket) => {
 
     // Get user data and noti
     let userInfo = await getDataWhenConnected({ username });
+
+    // Check all friends status
+    const rooms = getAllRooms();
+    userInfo.friends = userInfo.friends.map(user => {
+      return {
+        ...user,
+        active: rooms.includes(user.username)
+      };
+    });
+
     if (callback) {
       callback(userInfo);
     }
@@ -60,6 +70,14 @@ io.on('connection', (socket) => {
     });
   });
 
+  // User log out
+  socket.on('log-out', () => {
+    state.friends.forEach(user => {
+      io.to(user.username).emit('friend-offline', state.username);
+    });
+    socket.disconnect();
+  });
+
   // Get user info
   socket.on('get-user-info', ({ username }, callback) => {
     let info = getUserInfo(username);
@@ -71,11 +89,13 @@ io.on('connection', (socket) => {
 
   // Update user info
   socket.on('update-user-info', async ({ info }, callback) => {
-    let isSuccess = await updateUserInfo(state.username, info);
+    const isSuccess = await updateUserInfo(info);
+    const changes = { ...info };
+    delete changes.password;
     if (isSuccess) {
       // Notify all friend
-      state.info.friends.forEach(user => {
-        io.to(user).emit('friend-update-profile', state.info);
+      state.friends.forEach(user => {
+        io.to(user.username).emit('friend-update-profile', changes);
       });
     }
 
