@@ -21,7 +21,7 @@ async function getGroupInfo({ groupId }) {
   } catch (e) {
     console.log(e);
   } finally {
-    return groupInfo._doc;
+    return groupInfo ? groupInfo._doc : null;
   }
 }
 

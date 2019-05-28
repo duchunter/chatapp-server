@@ -17,7 +17,7 @@ async function createUser(payload) {
 async function getUserInfo({ username }) {
   try {
     let user = await User.findOne({ username });
-    return user._doc;
+    return user ? user._doc : null;
   } catch (e) {
     console.log(e);
     return null;

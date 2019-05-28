@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const uuidv1 = require('uuid/v1');
 
 const { DB_NAME, DB_CONNECT_STRING } = require('../config');
 
@@ -16,7 +17,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const groupSchema = new mongoose.Schema({
-  _id: String,
+  _id: {
+    type: String,
+    default: uuidv1
+  },
   name: String,
   members: [ String ]
 });
