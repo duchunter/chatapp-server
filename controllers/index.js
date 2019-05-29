@@ -45,11 +45,11 @@ async function getDataWhenConnected({ username }) {
   return {
     ...userInfo,
     notifications,
-    friends: allFriends.map(friend => {
+    friends: allFriends.filter(f => f).map(friend => {
       const { username, name, avatar } = friend;
       return { username, name, avatar };
     }),
-    groups: allGroups.map((group, index) => {
+    groups: allGroups.filter(g => g).map((group, index) => {
       return {
         ...group,
         messages: allTopMessages[ index ]
