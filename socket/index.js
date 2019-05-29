@@ -13,6 +13,7 @@ const {
   removeMember,
   removeGroup,
   getGroupInfo,
+  getMessages,
   createKickMemberNoti,
   addMember,
   updateGroup,
@@ -27,10 +28,20 @@ function getAllRooms() {
   return Object.keys(io.sockets.adapter.rooms);
 }
 
+// Join user to room
+function joinUserToRoom(room, username) {
+  if (getAllRooms().includes(username)) {
+    let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
+    io.sockets.sockets[ socketId ].join(room);
+  }
+}
+
 // Kick user from room
 function kickUserFromRoom(room, username) {
-  let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
-  io.sockets.sockets[ socketId ].leave(room);
+  if (getAllRooms().includes(username)) {
+    let socketId = Object.keys(io.sockets.adapter.rooms[ username ].sockets)[ 0 ];
+    io.sockets.sockets[ socketId ].leave(room);
+  }
 }
 
 io.on('connection', socket => {
@@ -259,11 +270,17 @@ io.on('connection', socket => {
 
     if (isSuccess) {
       // Update group chat info of all current member in the room
-      const groupInfo = getGroupInfo({ groupId });
+      const [ groupInfo, messages ] = await Promise.all([
+        getGroupInfo({ groupId }),
+        getMessages({ groupId, limit: 100 })
+      ]);
+
+      groupInfo.messages = messages;
       io.to(groupId).emit('update-group-chat', groupInfo);
 
       // Notify new member
       io.to(username).emit('added-to-group', groupInfo);
+      joinUserToRoom(groupId, username);
     }
 
     if (callback) {
@@ -272,7 +289,7 @@ io.on('connection', socket => {
   });
 
   // Leave/Kick member from group chat
-  socket.on('remove-member', async ({ groupId, username }, callback) => {
+  socket.on('remove-member', async ({ groupId, username, groupName }, callback) => {
     const results = await Promise.all([
       removeMember({ groupId, username }),
       removeGroup({ groupId, username })
@@ -291,7 +308,10 @@ io.on('connection', socket => {
       // If the action is kick, notify that kicked member
       if (state.username !== username) {
         let noti = await createKickMemberNoti({
-          group: groupId,
+          group: {
+            _id: groupId,
+            name: groupName
+          },
           receiver: username
         });
         io.to(username).emit('notification', noti);

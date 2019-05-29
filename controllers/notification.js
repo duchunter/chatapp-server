@@ -41,7 +41,8 @@ async function createKickMemberNoti({ group, receiver }) {
   return await createNotification({
     content,
     username: receiver.username,
-    type: 0
+    type: 2,
+    extra_data: group._id
   });
 }
 

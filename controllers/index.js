@@ -30,7 +30,7 @@ async function getDataWhenConnected({ username }) {
   let getAllGroupInfo = Promise.all(groupPromises);
 
   let messagePromises = groups.map(groupId => {
-    return getMessages({ groupId, limit: 20 });
+    return getMessages({ groupId, limit: 100 });
   });
   let getAllTopMessages = Promise.all(messagePromises);
 
