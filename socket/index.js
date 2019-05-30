@@ -147,8 +147,15 @@ io.on('connection', socket => {
 
   // Handle friend request
   socket.on('handle-friend-request', async ({ sender, accepted }, callback) => {
-    const { username, name, avatar } = state;
+    const { username, name, avatar, friends } = state;
+    const isFriend = friends.some(user => user.username === sender);
     if (accepted) {
+      // Is friend already
+      if (isFriend && callback) {
+        callback(true);
+        return;
+      }
+
       const results = await Promise.all([
         updateFriend({ username, friendname: sender }),
         updateFriend({ username: sender, friendname: username })
