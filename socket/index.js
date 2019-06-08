@@ -164,7 +164,7 @@ io.on('connection', socket => {
       const isSuccess = results.every(status => status);
       if (isSuccess) {
         const noti = await createFriendAcceptNoti({
-          sender: { username: sender.username },
+          sender: { username: sender },
           receiver: { username, name, avatar }
         });
         io.to(sender).emit('notification', noti);
